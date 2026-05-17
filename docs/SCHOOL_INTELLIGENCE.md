@@ -12,9 +12,13 @@ Kloer now has a Supabase-ready data layer for shared, anonymized school intellig
   - `GET /api/school-intelligence`
   - `POST /api/school-intelligence/results`
   - `POST /api/school-intelligence/report`
+- Supabase Edge Function with the same public API shape at:
+  - `GET /functions/v1/school-intelligence`
+  - `POST /functions/v1/school-intelligence/results`
+  - `POST /functions/v1/school-intelligence/report`
 - Frontend route: `/school-intelligence`.
 - Supabase magic-link sign-in on the School Intelligence page when browser env vars are configured.
-- GitHub Pages-safe local demo fallback when no API/backend is available.
+- GitHub Pages-safe local demo fallback when Supabase is not configured.
 
 ## Supabase Setup
 
@@ -36,12 +40,34 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=browser-publishable-key
 ```
 
-4. Apply the migration:
+4. Apply the migration and deploy the Edge Function:
 
 ```bash
 npx supabase link --project-ref YOUR_PROJECT_REF
 npx supabase db push
+npx supabase functions deploy school-intelligence --no-verify-jwt --use-api
 ```
+
+5. Configure GitHub repository settings:
+
+Repository variables:
+
+```bash
+SUPABASE_PROJECT_REF=your-project-ref
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SCHOOL_INTELLIGENCE_BACKEND=supabase-edge
+VITE_SUPABASE_FUNCTIONS_URL=https://your-project.supabase.co/functions/v1
+```
+
+Repository secrets:
+
+```bash
+SUPABASE_ACCESS_TOKEN=your-supabase-access-token
+SUPABASE_DB_PASSWORD=your-database-password
+VITE_SUPABASE_PUBLISHABLE_KEY=your-browser-publishable-key
+```
+
+The `Deploy Supabase Backend` GitHub Action will push migrations, set non-secret function configuration, and deploy the `school-intelligence` Edge Function.
 
 ## Privacy Rules In The Schema
 
@@ -53,4 +79,4 @@ npx supabase db push
 
 ## Production Note
 
-GitHub Pages only hosts the static frontend. The Supabase-backed API needs a server host or Supabase Edge Functions. Until then, the deployed static app uses the local demo fallback for the School Intelligence page.
+GitHub Pages only hosts the static frontend. The shared database becomes live after the Supabase project exists, the migration has run, the Edge Function is deployed, and the GitHub Pages build receives the `VITE_*` Supabase values.

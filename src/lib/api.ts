@@ -28,6 +28,12 @@ import { getSupabaseAccessToken } from "./supabaseClient";
 
 const apiMode = import.meta.env.VITE_API_MODE as string | undefined;
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/+$/, "") ?? "";
+const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+const schoolIntelligenceBackend = import.meta.env.VITE_SCHOOL_INTELLIGENCE_BACKEND as string | undefined;
+const supabaseFunctionsUrl =
+  ((import.meta.env.VITE_SUPABASE_FUNCTIONS_URL as string | undefined)?.replace(/\/+$/, "") ||
+    (supabaseUrl ? `${supabaseUrl}/functions/v1` : ""));
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (apiMode === "static") {
@@ -64,6 +70,38 @@ function shouldUseLocalFallback(error: unknown) {
   }
 
   return error instanceof TypeError;
+}
+
+function shouldUseSupabaseSchoolIntelligence() {
+  return (
+    schoolIntelligenceBackend === "supabase-edge" &&
+    Boolean(supabaseFunctionsUrl) &&
+    Boolean(supabasePublishableKey)
+  );
+}
+
+async function schoolIntelligenceEdgeRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessToken = await getSupabaseAccessToken();
+  if (!accessToken) {
+    throw new ApiRequestError("Sign in before syncing private school intelligence.", 401);
+  }
+
+  const response = await fetch(`${supabaseFunctionsUrl}/school-intelligence${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      apikey: supabasePublishableKey ?? "",
+      Authorization: `Bearer ${accessToken}`,
+      ...init?.headers
+    },
+    ...init
+  });
+
+  if (!response.ok) {
+    const details = await response.json().catch(() => ({}));
+    throw new ApiRequestError(details.error ?? `School intelligence failed with ${response.status}`, response.status);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export async function getAgents() {
@@ -139,6 +177,12 @@ export async function getSchoolIntelligence(query: SchoolIntelligenceQuery = {})
     }
   }
 
+  if (shouldUseSupabaseSchoolIntelligence()) {
+    return schoolIntelligenceEdgeRequest<SchoolIntelligenceResponse>(
+      `${search.toString() ? `?${search.toString()}` : ""}`
+    );
+  }
+
   try {
     return await request<SchoolIntelligenceResponse>(
       `/api/school-intelligence${search.toString() ? `?${search.toString()}` : ""}`
@@ -152,6 +196,13 @@ export async function getSchoolIntelligence(query: SchoolIntelligenceQuery = {})
 }
 
 export async function uploadTestResult(payload: ResultUploadRequest) {
+  if (shouldUseSupabaseSchoolIntelligence()) {
+    return schoolIntelligenceEdgeRequest<ResultUploadResponse>("/results", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  }
+
   try {
     return await request<ResultUploadResponse>("/api/school-intelligence/results", {
       method: "POST",
@@ -166,6 +217,13 @@ export async function uploadTestResult(payload: ResultUploadRequest) {
 }
 
 export async function reportSchoolIntelligence(payload: IntelligenceReportRequest) {
+  if (shouldUseSupabaseSchoolIntelligence()) {
+    return schoolIntelligenceEdgeRequest<IntelligenceReportResponse>("/report", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  }
+
   try {
     return await request<IntelligenceReportResponse>("/api/school-intelligence/report", {
       method: "POST",

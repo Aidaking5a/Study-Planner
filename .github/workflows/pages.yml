@@ -36,6 +36,10 @@ jobs:
         env:
           VITE_BASE_PATH: /Study-Planner/
           VITE_API_MODE: static
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SCHOOL_INTELLIGENCE_BACKEND: ${{ vars.VITE_SCHOOL_INTELLIGENCE_BACKEND }}
+          VITE_SUPABASE_FUNCTIONS_URL: ${{ vars.VITE_SUPABASE_FUNCTIONS_URL }}
 
       - name: Preserve SPA routes
         run: cp dist/index.html dist/404.html
