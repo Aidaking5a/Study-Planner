@@ -39,6 +39,7 @@ import {
   createStudySession,
   getAgents,
   getSchoolIntelligence,
+  isSchoolIntelligenceSupabaseEnabled,
   joinWaitlist,
   reportSchoolIntelligence,
   runAgent,
@@ -1948,6 +1949,7 @@ function SchoolIntelligencePage({
   const [loadingIntel, setLoadingIntel] = useState(false);
   const [uploading, setUploading] = useState(false);
   const supabaseMode = getBrowserSupabaseMode();
+  const supabaseSyncEnabled = isSchoolIntelligenceSupabaseEnabled();
   const [authEmail, setAuthEmail] = useState("");
   const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(false);
@@ -2013,7 +2015,7 @@ function SchoolIntelligencePage({
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (supabaseMode === "supabase-ready" && !authUserEmail) {
+    if (supabaseSyncEnabled && supabaseMode === "supabase-ready" && !authUserEmail) {
       setStatus("Sign in first so Supabase can store the upload under your private user account.");
       return;
     }
@@ -2113,7 +2115,7 @@ function SchoolIntelligencePage({
               <h2>Corrected result upload</h2>
               <p>Photos stay private. Only aggregate patterns can become school intelligence.</p>
             </div>
-            <span className="status-chip">{supabaseMode === "supabase-ready" ? "Supabase ready" : "Local demo"}</span>
+            <span className="status-chip">{supabaseSyncEnabled ? "Supabase ready" : "Local demo"}</span>
           </div>
 
           <form className="school-intel-form" onSubmit={handleSubmit}>
@@ -2213,7 +2215,7 @@ function SchoolIntelligencePage({
               <p>Raw uploads are owner-only. Shared guidance needs evidence, confidence, and auditability.</p>
             </div>
           </div>
-          {supabaseMode === "supabase-ready" ? (
+          {supabaseSyncEnabled ? (
             <form className="auth-card" onSubmit={handleAuthSubmit}>
               <div>
                 <LockKeyhole size={20} />

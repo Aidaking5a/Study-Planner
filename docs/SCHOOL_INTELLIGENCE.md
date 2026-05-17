@@ -22,28 +22,30 @@ Kloer now has a Supabase-ready data layer for shared, anonymized school intellig
 
 ## Supabase Setup
 
-1. Create a Supabase project.
-2. Set API environment variables:
+1. Use Supabase project `unvuikzzyfjwhnmjszew`.
+2. Set API environment variables for local Express development:
 
 ```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=server-only-service-role-key
-SUPABASE_RESULT_UPLOAD_BUCKET=test-result-uploads
+SUPABASE_URL=https://unvuikzzyfjwhnmjszew.supabase.co
+SUPABASE_SECRET_KEY=server-only-secret-key
+RESULT_UPLOAD_BUCKET=test-result-uploads
 SCHOOL_INTELLIGENCE_MIN_CONFIDENCE=0.74
 SCHOOL_INTELLIGENCE_MIN_EVIDENCE=3
 ```
 
+On hosted Supabase Edge Functions, Supabase provides `SUPABASE_SECRET_KEYS` by default. Do not put `sb_secret_...` keys in frontend `VITE_*` variables, GitHub Pages files, or browser code.
+
 3. Set browser environment variables for future Auth wiring:
 
 ```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=browser-publishable-key
+VITE_SUPABASE_URL=https://unvuikzzyfjwhnmjszew.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_EBwFBbIEa67744oGVaigJg_0NPP2jiT
 ```
 
 4. Apply the migration and deploy the Edge Function:
 
 ```bash
-npx supabase link --project-ref YOUR_PROJECT_REF
+npx supabase link --project-ref unvuikzzyfjwhnmjszew
 npx supabase db push
 npx supabase functions deploy school-intelligence --no-verify-jwt --use-api
 ```
@@ -53,10 +55,10 @@ npx supabase functions deploy school-intelligence --no-verify-jwt --use-api
 Repository variables:
 
 ```bash
-SUPABASE_PROJECT_REF=your-project-ref
-VITE_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_PROJECT_REF=unvuikzzyfjwhnmjszew
+VITE_SUPABASE_URL=https://unvuikzzyfjwhnmjszew.supabase.co
 VITE_SCHOOL_INTELLIGENCE_BACKEND=supabase-edge
-VITE_SUPABASE_FUNCTIONS_URL=https://your-project.supabase.co/functions/v1
+VITE_SUPABASE_FUNCTIONS_URL=https://unvuikzzyfjwhnmjszew.supabase.co/functions/v1
 ```
 
 Repository secrets:

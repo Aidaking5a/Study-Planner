@@ -20,7 +20,8 @@ import { getSupabaseAdminClient, getSchoolIntelligenceProviderName } from "./sup
 
 const MIN_CONFIDENCE = Number(process.env.SCHOOL_INTELLIGENCE_MIN_CONFIDENCE ?? "0.74");
 const MIN_EVIDENCE = Number(process.env.SCHOOL_INTELLIGENCE_MIN_EVIDENCE ?? "3");
-const UPLOAD_BUCKET = process.env.SUPABASE_RESULT_UPLOAD_BUCKET ?? "test-result-uploads";
+const UPLOAD_BUCKET =
+  process.env.RESULT_UPLOAD_BUCKET ?? process.env.SUPABASE_RESULT_UPLOAD_BUCKET ?? "test-result-uploads";
 
 interface DemoStore {
   schools: SchoolProfile[];

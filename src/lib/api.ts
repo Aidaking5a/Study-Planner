@@ -80,6 +80,10 @@ function shouldUseSupabaseSchoolIntelligence() {
   );
 }
 
+export function isSchoolIntelligenceSupabaseEnabled() {
+  return shouldUseSupabaseSchoolIntelligence();
+}
+
 async function schoolIntelligenceEdgeRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const accessToken = await getSupabaseAccessToken();
   if (!accessToken) {

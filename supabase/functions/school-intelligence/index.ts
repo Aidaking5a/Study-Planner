@@ -7,12 +7,13 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const uploadBucket = Deno.env.get("SUPABASE_RESULT_UPLOAD_BUCKET") ?? "test-result-uploads";
+const secretKey = getSupabaseSecretKey();
+const uploadBucket =
+  Deno.env.get("RESULT_UPLOAD_BUCKET") ?? Deno.env.get("SUPABASE_RESULT_UPLOAD_BUCKET") ?? "test-result-uploads";
 const minConfidence = Number(Deno.env.get("SCHOOL_INTELLIGENCE_MIN_CONFIDENCE") ?? "0.74");
 const minEvidence = Number(Deno.env.get("SCHOOL_INTELLIGENCE_MIN_EVIDENCE") ?? "3");
 
-const admin = createClient(supabaseUrl, serviceRoleKey, {
+const admin = createClient(supabaseUrl, secretKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
@@ -25,7 +26,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    if (!supabaseUrl || !serviceRoleKey) {
+    if (!supabaseUrl || !secretKey) {
       return json({ error: "Supabase function secrets are not configured." }, 500);
     }
 
@@ -53,6 +54,25 @@ Deno.serve(async (request) => {
     return json({ error: message }, status);
   }
 });
+
+function getSupabaseSecretKey() {
+  const explicitKey = Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (explicitKey) {
+    return explicitKey;
+  }
+
+  const secretKeysJson = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (!secretKeysJson) {
+    return "";
+  }
+
+  try {
+    const secretKeys = JSON.parse(secretKeysJson) as Record<string, string>;
+    return secretKeys.default ?? Object.values(secretKeys)[0] ?? "";
+  } catch {
+    return "";
+  }
+}
 
 async function requireUser(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
