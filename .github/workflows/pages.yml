@@ -35,6 +35,7 @@ jobs:
         run: npm run build
         env:
           VITE_BASE_PATH: /Study-Planner/
+          VITE_API_MODE: static
 
       - name: Preserve SPA routes
         run: cp dist/index.html dist/404.html

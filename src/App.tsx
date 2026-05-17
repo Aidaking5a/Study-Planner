@@ -525,8 +525,11 @@ function App() {
         </header>
 
         {error ? (
-          <div className="alert" role="alert">
-            {error}
+          <div className="toast-alert" role="status">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError(null)}>
+              Dismiss
+            </button>
           </div>
         ) : null}
 
@@ -993,7 +996,7 @@ function StudyWorkspace({
             <h2>Study session</h2>
             <p>Concrete plan from the free local agent network.</p>
           </div>
-          <span className="status-chip">Free API</span>
+          <span className="status-chip">{session?.provider ?? "Free local"}</span>
         </div>
 
         {session ? (
