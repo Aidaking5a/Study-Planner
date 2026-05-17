@@ -2,8 +2,8 @@
   "name": "Kloer Study",
   "short_name": "Kloer",
   "description": "Multilingual study copilot for Luxembourg students.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "background_color": "#070d1d",
   "theme_color": "#070d1d",
@@ -13,31 +13,37 @@
     {
       "name": "AI Tutor",
       "short_name": "Tutor",
-      "url": "/ai-tutor",
+      "url": "./ai-tutor",
       "description": "Plan around upcoming tests."
     },
     {
       "name": "Study Planner",
       "short_name": "Planner",
-      "url": "/study-planner",
+      "url": "./study-planner",
       "description": "Open the exam calendar."
     },
     {
       "name": "Smart Practice",
       "short_name": "Practice",
-      "url": "/smart-practice",
+      "url": "./smart-practice",
       "description": "Review flashcards and summaries."
     },
     {
       "name": "Progress Hub",
       "short_name": "Progress",
-      "url": "/progress-hub",
+      "url": "./progress-hub",
       "description": "Check readiness and task completion."
+    },
+    {
+      "name": "School Intelligence",
+      "short_name": "School Intel",
+      "url": "./school-intelligence",
+      "description": "Upload corrected tests privately and view safe aggregate guidance."
     }
   ],
   "icons": [
     {
-      "src": "/kloer-icon.svg",
+      "src": "kloer-icon.svg",
       "sizes": "128x128",
       "type": "image/svg+xml",
       "purpose": "any maskable"

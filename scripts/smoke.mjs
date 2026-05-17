@@ -41,6 +41,23 @@ try {
   await page.getByRole("heading", { name: /Progress formula/i }).waitFor({ timeout: 5000 });
   await page.getByText("Practice accuracy", { exact: true }).waitFor({ timeout: 5000 });
 
+  await page.goto(`${baseUrl}/school-intelligence`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { level: 1, name: /School Intelligence/i }).waitFor({ timeout: 5000 });
+  await page.getByLabel("Teacher").fill("Mme Demo");
+  await page.getByLabel("Expected answers").fill("Exact definition of linear function; one worked slope example");
+  await page.getByLabel("Correction notes").fill("Teacher rewards exact definitions and visible method steps.");
+  await page.getByLabel("Mark", { exact: true }).fill("48");
+  await page.getByLabel("Corrected result photos").setInputFiles({
+    name: "corrected-result.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lB2uWQAAAABJRU5ErkJggg==",
+      "base64"
+    )
+  });
+  await page.getByRole("button", { name: /Upload result/i }).click();
+  await page.getByText(/Extraction complete/i).waitFor({ timeout: 10000 });
+
   await page.goto(baseUrl, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /Generate Session/i }).click();
   await page.getByText("Summary").waitFor({ timeout: 10000 });

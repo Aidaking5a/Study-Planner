@@ -35,6 +35,55 @@ export const powerPointSchema = z.object({
   slideCount: z.number().int().min(5).max(10)
 });
 
+const optionalTextSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => (value ? value : undefined));
+
+export const schoolIntelligenceQuerySchema = z.object({
+  schoolName: optionalTextSchema,
+  schoolId: optionalTextSchema,
+  schoolYear: optionalTextSchema,
+  subject: optionalTextSchema,
+  courseId: optionalTextSchema,
+  teacherName: optionalTextSchema,
+  teacherProfileId: optionalTextSchema,
+  topic: optionalTextSchema
+});
+
+export const resultUploadImageSchema = z.object({
+  name: z.string().min(1).max(180),
+  type: z.string().min(3).max(80),
+  size: z.number().int().min(1).max(12_000_000),
+  dataUrl: z.string().min(80).max(16_000_000)
+});
+
+export const resultUploadSchema = z.object({
+  schoolName: z.string().min(2).max(160),
+  schoolCity: optionalTextSchema,
+  schoolYear: z.string().min(2).max(80),
+  subject: z.string().min(2).max(120),
+  courseLevel: optionalTextSchema,
+  teacherName: z.string().min(2).max(140),
+  testTitle: z.string().min(2).max(180),
+  testDate: optionalTextSchema,
+  topics: z.array(z.string().min(1).max(120)).min(1).max(12),
+  markObtained: z.number().min(0).max(1000).optional(),
+  markMax: z.number().min(1).max(1000).optional(),
+  expectedAnswers: optionalTextSchema,
+  correctionNotes: optionalTextSchema,
+  studentReflection: optionalTextSchema,
+  images: z.array(resultUploadImageSchema).min(1).max(8)
+});
+
+export const intelligenceReportSchema = z.object({
+  tableName: z.enum(["test_intelligence", "teacher_correction_patterns", "common_mistakes", "expected_answers"]),
+  recordId: z.string().min(3).max(120),
+  reason: z.enum(["wrong_extraction", "private_information", "teacher_targeting", "outdated", "other"]),
+  details: z.string().min(5).max(1000)
+});
+
 export const languageLabels: Record<StudyLanguage, string> = {
   en: "English",
   fr: "French",

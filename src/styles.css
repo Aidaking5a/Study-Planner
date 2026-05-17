@@ -1032,7 +1032,7 @@ pre {
 }
 
 .pulse-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .pulse-panel {
@@ -1100,6 +1100,10 @@ pre {
 .pulse-icon.amber,
 .deep-page.amber .deep-hero-icon {
   background: linear-gradient(135deg, #f4b95d, #8b4e20);
+}
+
+.pulse-icon.blue {
+  background: linear-gradient(135deg, #60b2ff, #214bba);
 }
 
 .deep-page.blue .deep-hero-icon {
@@ -1687,6 +1691,170 @@ pre {
   background: rgba(118, 87, 255, 0.24);
 }
 
+.school-intel-mini,
+.school-intel-layout,
+.school-intel-form,
+.safety-stack,
+.extraction-card,
+.shared-intel-grid,
+.shared-intel-card,
+.auth-card,
+.image-chip-row {
+  display: grid;
+  gap: 14px;
+}
+
+.school-intel-mini {
+  border: 1px solid rgba(96, 178, 255, 0.28);
+  border-radius: 18px;
+  background: rgba(28, 68, 129, 0.2);
+  padding: 16px;
+}
+
+.school-intel-mini > div,
+.confidence-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.school-intel-mini > div {
+  justify-content: flex-start;
+  color: #cfe0ff;
+}
+
+.school-intel-mini p,
+.school-safety-panel p,
+.shared-intel-card p,
+.extraction-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.school-intel-layout {
+  grid-template-columns: minmax(520px, 1.08fr) minmax(360px, 0.92fr);
+  align-items: start;
+}
+
+.school-safety-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.school-intel-form textarea {
+  min-height: 0;
+}
+
+.upload-dropzone input {
+  border-style: dashed;
+  background: rgba(35, 87, 159, 0.18);
+}
+
+.image-chip-row {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.image-chip {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(97, 226, 212, 0.22);
+  border-radius: 999px;
+  background: rgba(23, 113, 111, 0.18);
+  color: #b5fff4;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sticky-actions {
+  position: sticky;
+  bottom: 12px;
+  z-index: 2;
+  padding-top: 8px;
+  background: linear-gradient(180deg, transparent, rgba(14, 21, 46, 0.92) 28%);
+}
+
+.safety-stack article,
+.extraction-card,
+.auth-card,
+.shared-intel-card {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(8, 14, 31, 0.48);
+  padding: 16px;
+}
+
+.auth-card > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.auth-card small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.auth-card svg {
+  color: #67eadc;
+}
+
+.safety-stack article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+}
+
+.safety-stack article p {
+  grid-column: 2;
+}
+
+.safety-stack svg {
+  color: #67eadc;
+}
+
+.extraction-card h3 {
+  margin-bottom: 0;
+}
+
+.confidence-row strong {
+  color: #b5fff4;
+}
+
+.shared-intel-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.shared-intel-card {
+  align-content: start;
+}
+
+.shared-intel-card small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.shared-intel-card button {
+  justify-self: start;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--ink);
+  background: rgba(8, 14, 31, 0.62);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 @media (max-width: 1240px) {
   .app-shell {
     grid-template-columns: 270px minmax(0, 1fr);
@@ -1708,6 +1876,7 @@ pre {
   .agent-layout,
   .launch-layout,
   .powerpoint-layout,
+  .school-intel-layout,
   .study-page-grid,
   .planner-layout,
   .progress-hero-grid {
@@ -1724,7 +1893,8 @@ pre {
   }
 
   .tutor-thread,
-  .planner-layout .panel:first-child {
+  .planner-layout .panel:first-child,
+  .school-safety-panel {
     position: static;
   }
 }
@@ -1830,7 +2000,8 @@ pre {
   .flashcard-grid,
   .pillar-grid,
   .exam-list,
-  .metric-grid {
+  .metric-grid,
+  .shared-intel-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1992,5 +2163,9 @@ pre {
 
   .big-flashcard {
     min-height: 260px;
+  }
+
+  .sticky-actions {
+    bottom: calc(80px + env(safe-area-inset-bottom));
   }
 }

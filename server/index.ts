@@ -2,11 +2,25 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express, { type ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
-import { agentRunSchema, powerPointSchema, studyInputSchema, waitlistSchema } from "./agentApi.js";
+import {
+  agentRunSchema,
+  intelligenceReportSchema,
+  powerPointSchema,
+  resultUploadSchema,
+  schoolIntelligenceQuerySchema,
+  studyInputSchema,
+  waitlistSchema
+} from "./agentApi.js";
 import { agents, findAgent } from "./agents/registry.js";
 import { businessPlan } from "./businessPlan.js";
 import { buildPowerPointFilename, createPowerPointDeck } from "./powerpoint.js";
 import { createFreeStudySession, runFreeAgent } from "./providers/freeProvider.js";
+import {
+  getSchoolIntelligence,
+  getSchoolIntelligenceRuntime,
+  reportSchoolIntelligence,
+  submitStudentResult
+} from "./schoolIntelligence.js";
 import type { WaitlistResponse } from "../shared/types.js";
 
 dotenv.config();
@@ -19,14 +33,15 @@ app.use(
     origin: process.env.WEB_ORIGIN?.split(",") ?? true
   })
 );
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "18mb" }));
 
 app.get("/api/health", (_request, response) => {
   response.json({
     ok: true,
     service: "kloer-agent-api",
     provider: process.env.AGENT_PROVIDER ?? "free",
-    freeBeta: true
+    freeBeta: true,
+    schoolIntelligence: getSchoolIntelligenceRuntime()
   });
 });
 
@@ -68,6 +83,35 @@ app.post("/api/study/session", (request, response, next) => {
 
 app.get("/api/business/plan", (_request, response) => {
   response.json(businessPlan);
+});
+
+app.get("/api/school-intelligence", async (request, response, next) => {
+  try {
+    const query = schoolIntelligenceQuerySchema.parse(request.query);
+    response.json(await getSchoolIntelligence(query));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/school-intelligence/results", async (request, response, next) => {
+  try {
+    const body = resultUploadSchema.parse(request.body);
+    const payload = await submitStudentResult(body, request.header("authorization"));
+    response.status(202).json(payload);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/school-intelligence/report", async (request, response, next) => {
+  try {
+    const body = intelligenceReportSchema.parse(request.body);
+    const payload = await reportSchoolIntelligence(body, request.header("authorization"));
+    response.status(202).json(payload);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/powerpoint/create", async (request, response, next) => {

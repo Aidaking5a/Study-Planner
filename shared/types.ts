@@ -113,6 +113,211 @@ export interface ProgressSnapshot {
   weakSpots: string[];
 }
 
+export const intelligenceStatuses = ["seed", "needs_more_evidence", "shared", "suppressed"] as const;
+export type IntelligenceStatus = (typeof intelligenceStatuses)[number];
+
+export interface SchoolProfile {
+  id: string;
+  name: string;
+  countryCode: string;
+  city?: string;
+}
+
+export interface SchoolYearProfile {
+  id: string;
+  schoolId: string;
+  label: string;
+  startsOn?: string;
+  endsOn?: string;
+}
+
+export interface CourseProfile {
+  id: string;
+  schoolId: string;
+  schoolYearId?: string;
+  subject: string;
+  level?: string;
+  language?: string;
+}
+
+export interface TeacherProfile {
+  id: string;
+  schoolId: string;
+  displayName: string;
+}
+
+export interface ExpectedAnswerRecord {
+  id: string;
+  testId?: string;
+  topic: string;
+  expectedAnswer: string;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+}
+
+export interface CorrectionStyleProfile {
+  id: string;
+  teacherProfileId?: string;
+  courseId?: string;
+  label: string;
+  summary: string;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+}
+
+export interface TeacherCorrectionPattern {
+  id: string;
+  schoolId: string;
+  courseId?: string;
+  teacherProfileId?: string;
+  pattern: string;
+  guidance: string;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+}
+
+export interface MarkDistributionBucket {
+  id: string;
+  courseId?: string;
+  teacherProfileId?: string;
+  bucketLabel: string;
+  count: number;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+}
+
+export interface CommonMistakeRecord {
+  id: string;
+  schoolId: string;
+  courseId?: string;
+  teacherProfileId?: string;
+  topic: string;
+  mistake: string;
+  recommendedFix: string;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+}
+
+export interface TestIntelligenceRecord {
+  id: string;
+  schoolId: string;
+  schoolYearId?: string;
+  courseId?: string;
+  teacherProfileId?: string;
+  subject: string;
+  testTitle: string;
+  topicSummary: string;
+  expectedAnswerPattern: string;
+  correctionStyleSummary: string;
+  commonMistakeSummary: string;
+  evidenceCount: number;
+  confidenceScore: number;
+  status: IntelligenceStatus;
+  updatedAt: string;
+}
+
+export interface SchoolIntelligenceQuery {
+  schoolName?: string;
+  schoolId?: string;
+  schoolYear?: string;
+  subject?: string;
+  courseId?: string;
+  teacherName?: string;
+  teacherProfileId?: string;
+  topic?: string;
+}
+
+export interface SchoolIntelligenceResponse {
+  provider: "supabase" | "demo-local" | "demo-memory";
+  minEvidence: number;
+  minConfidence: number;
+  school?: SchoolProfile;
+  course?: CourseProfile;
+  teacher?: TeacherProfile;
+  tests: TestIntelligenceRecord[];
+  expectedAnswers: ExpectedAnswerRecord[];
+  correctionPatterns: TeacherCorrectionPattern[];
+  markBuckets: MarkDistributionBucket[];
+  commonMistakes: CommonMistakeRecord[];
+  privacyNote: string;
+}
+
+export interface ResultUploadImage {
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
+}
+
+export interface ResultUploadRequest {
+  schoolName: string;
+  schoolCity?: string;
+  schoolYear: string;
+  subject: string;
+  courseLevel?: string;
+  teacherName: string;
+  testTitle: string;
+  testDate?: string;
+  topics: string[];
+  markObtained?: number;
+  markMax?: number;
+  expectedAnswers?: string;
+  correctionNotes?: string;
+  studentReflection?: string;
+  images: ResultUploadImage[];
+}
+
+export interface ExtractedResultInsight {
+  resultId: string;
+  jobId: string;
+  status: IntelligenceStatus;
+  confidenceScore: number;
+  evidenceCount: number;
+  extracted: {
+    schoolYear: string;
+    subject: string;
+    teacherName: string;
+    testTitle: string;
+    marks?: {
+      obtained: number;
+      max: number;
+      percent: number;
+    };
+    topics: string[];
+    expectedAnswers: string[];
+    correctionStyle: string;
+    commonMistakes: string[];
+  };
+  privateFeedback: string;
+  sharedSummary: string;
+  auditTrail: string[];
+}
+
+export interface ResultUploadResponse {
+  provider: "supabase" | "demo-local" | "demo-memory";
+  uploadedAt: string;
+  result: ExtractedResultInsight;
+  intelligence: SchoolIntelligenceResponse;
+}
+
+export interface IntelligenceReportRequest {
+  tableName: "test_intelligence" | "teacher_correction_patterns" | "common_mistakes" | "expected_answers";
+  recordId: string;
+  reason: "wrong_extraction" | "private_information" | "teacher_targeting" | "outdated" | "other";
+  details: string;
+}
+
+export interface IntelligenceReportResponse {
+  accepted: true;
+  reportId: string;
+  nextStep: string;
+}
+
 export interface AgentRunResponse {
   agent: AgentMeta;
   provider: string;

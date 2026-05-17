@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ClipboardList,
   Code2,
+  Database,
   Download,
   FileText,
   FlaskConical,
@@ -15,12 +16,14 @@ import {
   Languages,
   Library,
   LineChart,
+  LockKeyhole,
   ListChecks,
   Moon,
   NotebookText,
   Plus,
   RefreshCw,
   Rocket,
+  School,
   ShieldCheck,
   Sparkles,
   Star,
@@ -31,8 +34,23 @@ import {
   UserRound
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
-import { createPowerPoint, createStudySession, getAgents, joinWaitlist, runAgent } from "./lib/api";
+import {
+  createPowerPoint,
+  createStudySession,
+  getAgents,
+  getSchoolIntelligence,
+  joinWaitlist,
+  reportSchoolIntelligence,
+  runAgent,
+  uploadTestResult
+} from "./lib/api";
 import { transcribeNoteImage, type OcrProgress, type OcrResult } from "./lib/ocr";
+import {
+  getBrowserSupabaseClient,
+  getBrowserSupabaseMode,
+  sendSupabaseMagicLink,
+  signOutSupabaseUser
+} from "./lib/supabaseClient";
 import {
   STUDY_STATE_EVENT,
   addDaysIso,
@@ -58,6 +76,10 @@ import type {
   PowerPointRequest,
   PracticeResult,
   ProgressSnapshot,
+  ResultUploadImage,
+  ResultUploadRequest,
+  ResultUploadResponse,
+  SchoolIntelligenceResponse,
   StudentExam,
   StudyInput,
   StudyPlan,
@@ -71,6 +93,7 @@ type RoutePath =
   | "/study-planner"
   | "/smart-practice"
   | "/progress-hub"
+  | "/school-intelligence"
   | "/powerpoint"
   | "/agents"
   | "/launch";
@@ -108,6 +131,13 @@ const routeMeta = {
     documentTitle: "Progress Hub | Kloer Study",
     description: "Progress Hub displays study-plan completion, practice accuracy, weak spots, and readiness."
   },
+  "/school-intelligence": {
+    title: "School Intelligence",
+    subtitle: "Private result uploads become anonymized school guidance only after safety thresholds.",
+    documentTitle: "School Intelligence | Kloer Study",
+    description:
+      "School Intelligence stores corrected-test uploads privately and exposes only anonymized aggregate guidance."
+  },
   "/powerpoint": {
     title: "PowerPoint Creator",
     subtitle: "Feed in real class information and create a topic-specific student deck.",
@@ -134,6 +164,7 @@ const navItems = [
   { route: "/study-planner", label: "Planner", icon: CalendarDays },
   { route: "/smart-practice", label: "Practice", icon: Star },
   { route: "/progress-hub", label: "Progress", icon: LineChart },
+  { route: "/school-intelligence", label: "School Intel", icon: Database },
   { route: "/powerpoint", label: "PowerPoint", icon: FileText },
   { route: "/agents", label: "Agent API", icon: Code2 },
   { route: "/launch", label: "Launch Board", icon: Rocket }
@@ -568,6 +599,10 @@ function App() {
           />
         ) : null}
 
+        {activeRoute === "/school-intelligence" ? (
+          <SchoolIntelligencePage exams={allExams} onNavigate={navigate} />
+        ) : null}
+
         {activeRoute === "/powerpoint" ? (
           <PowerPointCreator input={input} onChange={setInput} />
         ) : null}
@@ -774,6 +809,18 @@ function DashboardPulse({
         </div>
         <button type="button" onClick={() => onNavigate("/progress-hub")}>
           Progress
+        </button>
+      </article>
+      <article className="pulse-panel">
+        <span className="pulse-icon blue">
+          <Database size={22} />
+        </span>
+        <div>
+          <strong>Shared school memory</strong>
+          <p>Upload corrected tests privately and unlock aggregate guidance safely.</p>
+        </div>
+        <button type="button" onClick={() => onNavigate("/school-intelligence")}>
+          Intel
         </button>
       </article>
     </section>
@@ -1115,6 +1162,10 @@ function AiTutorPage({
                 </article>
               ) : null}
 
+              {selectedExam ? (
+                <TutorSchoolIntel exam={selectedExam} onOpenIntel={() => onNavigate("/school-intelligence")} />
+              ) : null}
+
               <div className="action-row">
                 <button className="primary-action" type="button" onClick={handleGeneratePlan}>
                   <ListChecks size={18} />
@@ -1163,6 +1214,60 @@ function AiTutorPage({
         </section>
       </div>
     </DeepDivePage>
+  );
+}
+
+function TutorSchoolIntel({
+  exam,
+  onOpenIntel
+}: {
+  exam: StudentExam;
+  onOpenIntel: () => void;
+}) {
+  const [intelligence, setIntelligence] = useState<SchoolIntelligenceResponse | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getSchoolIntelligence({ subject: exam.subject, topic: exam.topics[0] })
+      .then((payload) => {
+        if (!cancelled) {
+          setIntelligence(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIntelligence(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [exam.id, exam.subject, exam.topics]);
+
+  const hasSignals = intelligence
+    ? intelligence.tests.length + intelligence.correctionPatterns.length + intelligence.commonMistakes.length > 0
+    : false;
+
+  return (
+    <article className="school-intel-mini" data-agent-section="shared-school-intelligence">
+      <div>
+        <Database size={18} />
+        <strong>Shared school memory</strong>
+      </div>
+      {hasSignals && intelligence ? (
+        <p>
+          Tutor hint: {intelligence.correctionPatterns[0]?.guidance ?? intelligence.tests[0]?.correctionStyleSummary}
+        </p>
+      ) : (
+        <p>
+          No safe shared signal yet for this topic. Add corrected result photos after the test to build the database.
+        </p>
+      )}
+      <button className="secondary-action" type="button" onClick={onOpenIntel}>
+        Open School Intelligence
+      </button>
+    </article>
   );
 }
 
@@ -1809,6 +1914,432 @@ function MobileToolNav({ activeRoute, onNavigate }: { activeRoute: RoutePath; on
   );
 }
 
+function SchoolIntelligencePage({
+  exams,
+  onNavigate
+}: {
+  exams: StudentExam[];
+  onNavigate: (route: RoutePath) => void;
+}) {
+  const firstExam = exams[0];
+  const [form, setForm] = useState({
+    schoolName: "Luxembourg School",
+    schoolCity: "Luxembourg",
+    schoolYear: "2025-2026",
+    subject: firstExam?.subject ?? "Mathematics",
+    courseLevel: "upper secondary",
+    teacherName: "",
+    testTitle: firstExam?.title ?? "",
+    testDate: firstExam?.date ?? "",
+    topics: firstExam?.topics.join(", ") ?? "definitions, worked examples",
+    markObtained: "",
+    markMax: "60",
+    expectedAnswers: "",
+    correctionNotes: "",
+    studentReflection: ""
+  });
+  const [images, setImages] = useState<ResultUploadImage[]>([]);
+  const [intelligence, setIntelligence] = useState<SchoolIntelligenceResponse | null>(null);
+  const [lastUpload, setLastUpload] = useState<ResultUploadResponse | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [loadingIntel, setLoadingIntel] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const supabaseMode = getBrowserSupabaseMode();
+  const [authEmail, setAuthEmail] = useState("");
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  useEffect(() => {
+    const client = getBrowserSupabaseClient();
+    if (!client) {
+      setAuthUserEmail(null);
+      return;
+    }
+
+    client.auth.getSession().then(({ data }) => {
+      setAuthUserEmail(data.session?.user.email ?? null);
+    });
+
+    const { data } = client.auth.onAuthStateChange((_event, session) => {
+      setAuthUserEmail(session?.user.email ?? null);
+    });
+
+    return () => {
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingIntel(true);
+    getSchoolIntelligence({ schoolName: form.schoolName, subject: form.subject })
+      .then((payload) => {
+        if (!cancelled) {
+          setIntelligence(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIntelligence(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingIntel(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [form.schoolName, form.subject]);
+
+  function updateField(field: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function handleImages(files: FileList | null) {
+    if (!files || files.length === 0) {
+      return;
+    }
+
+    const converted = await Promise.all(Array.from(files).map(fileToResultImage));
+    setImages(converted);
+    setStatus(`${converted.length} photo${converted.length === 1 ? "" : "s"} ready for private upload.`);
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (supabaseMode === "supabase-ready" && !authUserEmail) {
+      setStatus("Sign in first so Supabase can store the upload under your private user account.");
+      return;
+    }
+    if (images.length === 0) {
+      setStatus("Add at least one corrected-test photo first.");
+      return;
+    }
+
+    setUploading(true);
+    setStatus(null);
+    try {
+      const payload: ResultUploadRequest = {
+        schoolName: form.schoolName,
+        schoolCity: form.schoolCity,
+        schoolYear: form.schoolYear,
+        subject: form.subject,
+        courseLevel: form.courseLevel,
+        teacherName: form.teacherName,
+        testTitle: form.testTitle,
+        testDate: form.testDate || undefined,
+        topics: splitTopics(form.topics),
+        markObtained: form.markObtained ? Number(form.markObtained) : undefined,
+        markMax: form.markMax ? Number(form.markMax) : undefined,
+        expectedAnswers: form.expectedAnswers,
+        correctionNotes: form.correctionNotes,
+        studentReflection: form.studentReflection,
+        images
+      };
+      const response = await uploadTestResult(payload);
+      setLastUpload(response);
+      setIntelligence(response.intelligence);
+      setStatus(`Extraction complete. ${response.result.sharedSummary}`);
+    } catch (requestError) {
+      setStatus(requestError instanceof Error ? requestError.message : "Could not upload this result.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleReport(tableName: "test_intelligence" | "teacher_correction_patterns" | "common_mistakes" | "expected_answers", recordId: string) {
+    const details = window.prompt("What should moderation correct?");
+    if (!details) {
+      return;
+    }
+
+    const response = await reportSchoolIntelligence({
+      tableName,
+      recordId,
+      reason: "wrong_extraction",
+      details
+    });
+    setStatus(response.nextStep);
+  }
+
+  async function handleAuthSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!authEmail) {
+      return;
+    }
+
+    setAuthLoading(true);
+    try {
+      await sendSupabaseMagicLink(authEmail);
+      setStatus("Magic link sent. Open it in this browser to sync private uploads.");
+    } catch (requestError) {
+      setStatus(requestError instanceof Error ? requestError.message : "Could not start Supabase sign-in.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setAuthLoading(true);
+    try {
+      await signOutSupabaseUser();
+      setStatus("Signed out of Supabase.");
+    } catch (requestError) {
+      setStatus(requestError instanceof Error ? requestError.message : "Could not sign out.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  const sharedCount = intelligence
+    ? intelligence.tests.length +
+      intelligence.expectedAnswers.length +
+      intelligence.correctionPatterns.length +
+      intelligence.commonMistakes.length
+    : 0;
+
+  return (
+    <DeepDivePage route="/school-intelligence" tone="blue" icon={Database}>
+      <div className="school-intel-layout">
+        <section className="panel school-upload-panel" data-agent-section="private-result-upload">
+          <div className="panel-heading">
+            <div>
+              <h2>Corrected result upload</h2>
+              <p>Photos stay private. Only aggregate patterns can become school intelligence.</p>
+            </div>
+            <span className="status-chip">{supabaseMode === "supabase-ready" ? "Supabase ready" : "Local demo"}</span>
+          </div>
+
+          <form className="school-intel-form" onSubmit={handleSubmit}>
+            <div className="field-grid">
+              <label>
+                School
+                <input value={form.schoolName} onChange={(event) => updateField("schoolName", event.target.value)} />
+              </label>
+              <label>
+                City
+                <input value={form.schoolCity} onChange={(event) => updateField("schoolCity", event.target.value)} />
+              </label>
+              <label>
+                Year
+                <input value={form.schoolYear} onChange={(event) => updateField("schoolYear", event.target.value)} />
+              </label>
+              <label>
+                Subject
+                <input value={form.subject} onChange={(event) => updateField("subject", event.target.value)} />
+              </label>
+              <label>
+                Teacher
+                <input value={form.teacherName} onChange={(event) => updateField("teacherName", event.target.value)} />
+              </label>
+              <label>
+                Test title
+                <input value={form.testTitle} onChange={(event) => updateField("testTitle", event.target.value)} />
+              </label>
+              <label>
+                Test date
+                <input type="date" value={form.testDate} onChange={(event) => updateField("testDate", event.target.value)} />
+              </label>
+              <label>
+                Course level
+                <input value={form.courseLevel} onChange={(event) => updateField("courseLevel", event.target.value)} />
+              </label>
+              <label>
+                Mark
+                <input inputMode="decimal" value={form.markObtained} onChange={(event) => updateField("markObtained", event.target.value)} placeholder="42" />
+              </label>
+              <label>
+                Max mark
+                <input inputMode="decimal" value={form.markMax} onChange={(event) => updateField("markMax", event.target.value)} placeholder="60" />
+              </label>
+              <label className="span-2">
+                Topics
+                <input value={form.topics} onChange={(event) => updateField("topics", event.target.value)} />
+              </label>
+              <label className="span-2">
+                Expected answers
+                <textarea value={form.expectedAnswers} onChange={(event) => updateField("expectedAnswers", event.target.value)} rows={5} />
+              </label>
+              <label className="span-2">
+                Correction notes
+                <textarea value={form.correctionNotes} onChange={(event) => updateField("correctionNotes", event.target.value)} rows={4} />
+              </label>
+              <label className="span-2">
+                Student reflection
+                <textarea value={form.studentReflection} onChange={(event) => updateField("studentReflection", event.target.value)} rows={3} />
+              </label>
+              <label className="span-2 upload-dropzone">
+                Corrected result photos
+                <input type="file" accept="image/*" capture="environment" multiple onChange={(event) => handleImages(event.target.files)} />
+              </label>
+            </div>
+
+            {images.length > 0 ? (
+              <div className="image-chip-row" aria-label="Selected result photos">
+                {images.map((image) => (
+                  <span className="image-chip" key={`${image.name}-${image.size}`}>
+                    <Upload size={14} />
+                    {image.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="action-row sticky-actions">
+              <button className="primary-action" type="submit" disabled={uploading}>
+                <Upload size={18} />
+                {uploading ? "Extracting result" : "Upload result"}
+              </button>
+              <button className="secondary-action" type="button" onClick={() => onNavigate("/study-planner")}>
+                <CalendarDays size={18} />
+                Open planner
+              </button>
+            </div>
+          </form>
+
+          {status ? <p className="deck-status">{status}</p> : null}
+        </section>
+
+        <aside className="panel school-safety-panel" data-agent-section="privacy-thresholds">
+          <div className="panel-heading">
+            <div>
+              <h2>Privacy boundary</h2>
+              <p>Raw uploads are owner-only. Shared guidance needs evidence, confidence, and auditability.</p>
+            </div>
+          </div>
+          {supabaseMode === "supabase-ready" ? (
+            <form className="auth-card" onSubmit={handleAuthSubmit}>
+              <div>
+                <LockKeyhole size={20} />
+                <span>
+                  <strong>{authUserEmail ? "Signed in" : "Supabase sign-in"}</strong>
+                  <small>{authUserEmail ?? "Use a magic link before syncing private uploads."}</small>
+                </span>
+              </div>
+              {authUserEmail ? (
+                <button className="secondary-action" type="button" onClick={handleSignOut} disabled={authLoading}>
+                  Sign out
+                </button>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(event) => setAuthEmail(event.target.value)}
+                    placeholder="student@example.com"
+                  />
+                  <button className="secondary-action" type="submit" disabled={authLoading}>
+                    Send magic link
+                  </button>
+                </>
+              )}
+            </form>
+          ) : null}
+          <div className="safety-stack">
+            <article>
+              <LockKeyhole size={20} />
+              <strong>Private by default</strong>
+              <p>Storage paths are per-user. Other students never read original photos or individual marks.</p>
+            </article>
+            <article>
+              <ShieldCheck size={20} />
+              <strong>{intelligence?.minEvidence ?? 3}+ evidence threshold</strong>
+              <p>Teacher-specific patterns only surface after enough independent uploads.</p>
+            </article>
+            <article>
+              <School size={20} />
+              <strong>Careful wording</strong>
+              <p>Guidance is phrased as learning advice, not personal criticism of teachers.</p>
+            </article>
+          </div>
+
+          {lastUpload ? (
+            <div className="extraction-card">
+              <h3>Latest extraction</h3>
+              <div className="confidence-row">
+                <span>Confidence</span>
+                <strong>{Math.round(lastUpload.result.confidenceScore * 100)}%</strong>
+              </div>
+              <div className="progress-track">
+                <div style={{ width: `${Math.round(lastUpload.result.confidenceScore * 100)}%` }} />
+              </div>
+              <p>{lastUpload.result.privateFeedback}</p>
+              <ul className="clean-list">
+                {lastUpload.result.auditTrail.map((item) => (
+                  <li key={item}>
+                    <CheckCircle2 size={16} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </aside>
+      </div>
+
+      <section className="panel" data-agent-section="shared-aggregate-intelligence">
+        <div className="panel-heading">
+          <div>
+            <h2>Shared school intelligence</h2>
+            <p>
+              {loadingIntel
+                ? "Loading safe shared records."
+                : `${sharedCount} visible record${sharedCount === 1 ? "" : "s"} passed the threshold.`}
+            </p>
+          </div>
+          <span className="status-chip">{intelligence?.provider ?? "demo-local"}</span>
+        </div>
+
+        {sharedCount > 0 && intelligence ? (
+          <div className="shared-intel-grid">
+            {intelligence.tests.map((record) => (
+              <article className="shared-intel-card" key={record.id}>
+                <strong>{record.testTitle}</strong>
+                <p>{record.correctionStyleSummary}</p>
+                <small>{record.evidenceCount} uploads - {Math.round(record.confidenceScore * 100)}% confidence</small>
+                <button type="button" onClick={() => handleReport("test_intelligence", record.id)}>
+                  Report
+                </button>
+              </article>
+            ))}
+            {intelligence.correctionPatterns.map((record) => (
+              <article className="shared-intel-card" key={record.id}>
+                <strong>Correction pattern</strong>
+                <p>{record.guidance}</p>
+                <small>{record.evidenceCount} uploads - {Math.round(record.confidenceScore * 100)}% confidence</small>
+                <button type="button" onClick={() => handleReport("teacher_correction_patterns", record.id)}>
+                  Report
+                </button>
+              </article>
+            ))}
+            {intelligence.commonMistakes.map((record) => (
+              <article className="shared-intel-card" key={record.id}>
+                <strong>{record.topic}</strong>
+                <p>{record.mistake}</p>
+                <small>{record.recommendedFix}</small>
+                <button type="button" onClick={() => handleReport("common_mistakes", record.id)}>
+                  Report
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">
+            <Database size={34} />
+            <h3>No shared records visible yet</h3>
+            <p>
+              Uploads can still generate private feedback immediately. Shared guidance appears only after the minimum evidence and confidence rules pass.
+            </p>
+          </div>
+        )}
+      </section>
+    </DeepDivePage>
+  );
+}
+
 function PowerPointCreator({
   input,
   onChange
@@ -2101,6 +2632,28 @@ function LaunchBoard({ email, leadSignal, onEmailChange, onWaitlist }: LaunchBoa
       </div>
     </section>
   );
+}
+
+function fileToResultImage(file: File): Promise<ResultUploadImage> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () =>
+      resolve({
+        name: file.name,
+        type: file.type || "image/jpeg",
+        size: file.size,
+        dataUrl: String(reader.result)
+      });
+    reader.onerror = () => reject(new Error(`Could not read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+}
+
+function splitTopics(value: string) {
+  return value
+    .split(/,|\n|;/)
+    .map((topic) => topic.trim())
+    .filter(Boolean);
 }
 
 function useAppRoute(): [RoutePath, (route: RoutePath) => void] {
